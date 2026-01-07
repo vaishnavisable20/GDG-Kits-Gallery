@@ -1,0 +1,9 @@
+{
+  "title": "Web Hackathon",
+  "date": "Aug 08, 2025",
+  "img": "img/poster.png",
+  "active": false,
+  "tag": "Hackathon",
+  "link": "https://gdg.community.dev/",
+  "description": "A web hackathon for the student developers to build and grow."
+}
