@@ -20,37 +20,7 @@ const clubData = {
     { url: "web-dev2.png", caption: "Web-Dev Team" },
   ],
 
-  // Events Details (Yeh bhi ab slide honge)
-  events: [
-    {
-      title: "Code Rush",
-      date: "Dec 28, 2026",
-      img: "CODE_RUSH.png",
-      tag: "CodeRush",
-      link: " https://vision.hack2skill.com/event/GDGoC-25-gdg-kits",
-    },
-    {
-      title: "Career Guidance Session",
-      date: "Sep 05, 2025",
-      img: "workshop.png",
-      tag: "Session",
-      link: "https://gdg.community.dev/",
-    },
-    {
-      title: "UI/UX Session",
-      date: "Aug 8, 2025",
-      img: "https://images.unsplash.com/photo-1607252650355-f7fd0460ccdb?w=800",
-      tag: "UI/UX",
-      link: "https://gdg.community.dev/",
-    },
-    {
-      title: "Web Hackathon",
-      date: "Mar 12, 2026",
-      img: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800",
-      tag: "Web",
-      link: "https://gdg.community.dev/",
-    },
-  ],
+
 };
 
 // ==========================================
@@ -74,7 +44,7 @@ async function initSite() {
         (p) => `
             <div class="gallery-item relative group h-80 overflow-hidden rounded-[2.5rem] bento-card border-none shadow-md">
 
-<img src="${p.url}" class="w-full h-full object-contain group-hover:scale-110 transition duration-500">
+<img src="${resolveImagePath(p.url)}" class="w-full h-full object-cover object-center transform origin-center group-hover:scale-110 transition duration-500">
                 <div class="absolute inset-0 img-overlay flex items-end p-8 opacity-0 group-hover:opacity-100 transition duration-300">
                     <p class="text-white font-bold text-lg">${p.caption}</p>
                 </div>
@@ -85,69 +55,146 @@ async function initSite() {
   }
 
   // C. EVENTS SLIDER POPULATE
-//   const eventGrid = document.getElementById("events-grid");
-//   if (eventGrid) {
-//     eventGrid.innerHTML = clubData.events
-//       .map(
-//         (e) => `
-//             <div class="event-card bento-card overflow-hidden rounded-[2rem] bg-white">
+  const eventGrid = document.getElementById("events-grid");
+  if (eventGrid) {
+    try {
+      // 1. Get the list object from data/list.json
+      const response = await fetch('data/list.json');
+      const listObj = await response.json();
+      const eventFolders = listObj.eventFolders || listObj;
 
-//                 <img src="${e.img}" class="w-full h-48 object-contain bg-gray-50">
-//                 <div class="p-8">
-//                     <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">${e.tag}</span>
-//                     <h4 class="text-xl font-bold mt-4">${e.title}</h4>
-//                     <p class="text-slate-500 text-sm mt-2 mb-4"><i class="far fa-calendar-alt mr-2"></i>${e.date}</p>
-//                     <button onclick="window.open('${e.link}', '_blank')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-100">View Details</button>
-//                 </div>
-//             </div>
-//         `
-//       )
-//       .join("");
-//   }
-// }
+      // 2. For each folder path (e.g., "event_a/details.json"), fetch that details.json
+      const eventDataPromises = eventFolders.map(async (relPath) => {
+        try {
+          // relPath is like 'event_a/details.json'
+          const res = await fetch(`data/${relPath}`);
+          const details = await res.json();
+          // compute the base directory for this event (e.g., 'event_a')
+          const parts = relPath.split('/');
+          const baseDir = parts.length > 1 ? parts.slice(0, -1).join('/') : parts[0];
+          return { details, baseDir };
+        } catch (err) {
+          console.warn('Skipping event at', relPath, err);
+          return null;
+        }
+      });
 
-// ==========================================
-// 3. OTHER FUNCTIONS
-// ==========================================
-// function joinCommunity() {
-//   window.open("https://gdg.community.dev/", "_blank");
-// }
+      const all = (await Promise.all(eventDataPromises)).filter(Boolean);
 
-// Page load hone par sab start karo
-// window.onload = initSite;
+      // Helper to check if a URL exists (HEAD first, then GET fallback)
+      async function urlExists(url) {
+        try {
+          const res = await fetch(url, { method: 'HEAD' });
+          if (res && res.ok) return true;
+        } catch (err) {
+          // fallback to GET
+        }
+        try {
+          const res2 = await fetch(url);
+          return res2 && res2.ok;
+        } catch (err) {
+          return false;
+        }
+      }
 
-// 
-// C. DYNAMIC EVENT SECTION 
-const eventGrid = document.getElementById("events-grid");
-if (eventGrid) {
-  try {
-      // 1. Get the list of event folders from your main list.json
-    const response = await fetch('Events Info/list.json');
-    const eventPaths = await response.json(); // Expected: ["career-guidance/details.json", "code-rush/details.json"]
+      // Try to find thumbnail named 't' under data/<baseDir>/img/ or data/<baseDir>/images/ with common extensions
+      async function findThumbFor(baseDir) {
+        const exts = ['.svg', '.png', '.jpg', '.jpeg', '.webp', ''];
+        for (const ex of exts) {
+          const p1 = `data/${baseDir}/img/t${ex}`;
+          if (await urlExists(p1)) return p1;
+          const p2 = `data/${baseDir}/images/t${ex}`;
+          if (await urlExists(p2)) return p2;
+        }
+        return null;
+      }
 
-      // 2. Fetch details for each event
-    const eventDataPromises = eventPaths.map(path => 
-      fetch(`Events Info/list.json${path}`).then(res => res.json())
-    );
-      
-    const allEvents = await Promise.all(eventDataPromises);
+      // Render each event after resolving its thumbnail (if any). If no thumbnail, use Material Symbols 'broken_image'.
+      const htmlPromises = all.map(async ({ details: e, baseDir }) => {
+        // status is a boolean: true = active/ongoing, absent or false = not active
+        const isActive = Boolean(e.active);
+        let statusBadge = '';
+        if (isActive) {
+          statusBadge = `<span class="text-[10px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-3 py-1 rounded-full">LIVE</span>`;
+        }
+        // prefer event-specified image if present
+        const specified = e.img || e.image || null;
+        let thumb = null;
+        if (specified) {
+          // check specified as absolute/public or relative inside event folder
+          if (/^https?:\/\//.test(specified) || specified.startsWith('public/')) {
+            thumb = specified;
+          } else {
+            // check relative to event folder
+            const candidate = `data/${baseDir}/${specified}`;
+            if (await urlExists(candidate)) thumb = candidate;
+            else if (await urlExists(resolveImagePath(specified))) thumb = resolveImagePath(specified);
+          }
+        }
+        // if not found yet, try the 't' thumbnails
+        if (!thumb) {
+          const found = await findThumbFor(baseDir);
+          if (found) thumb = found;
+        }
 
-      // 3. Render to HTML
-    eventGrid.innerHTML = allEvents.map(e => `
-      <div class="event-card bento-card ...">
-          <img src="${e.img}" class="...">
+        if (thumb) {
+          const imgSrc = resolveImagePath(thumb);
+      return `
+    <div class="event-card bento-card overflow-hidden rounded-[2rem] bg-white">
+      <img src="${imgSrc}" class="w-full h-48 object-cover bg-gray-50" onerror="this.onerror=null;this.style.display='none'">
+      <div class="p-8">
+        <div class="flex items-center gap-3">
+        <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">${e.tag || ''}</span>
+        ${statusBadge}
+        </div>
+        <h4 class="text-xl font-bold mt-4">${e.title || ''}</h4>
+        <p class="text-slate-500 text-sm mt-2 mb-4">${e.date || ''}</p>
+        <button onclick="window.open('${e.link || '#'}', '_blank')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-100">View Details</button>
+      </div>
+    </div>
+  `;
+        }
+
+        // no thumbnail: render broken_image using Google Material Symbols
+        return `
+      <div class="event-card bento-card overflow-hidden rounded-[2rem] bg-white">
+          <div class="w-full h-48 bg-gray-50 flex items-center justify-center text-slate-400">
+            <span class="material-symbols-outlined text-4xl">broken_image</span>
+          </div>
           <div class="p-8">
-              <span class="...">${e.tag}</span>
-              <h4 class="text-xl font-bold mt-4">${e.title}</h4>
-              <p class="...">${e.date}</p>
-              <button onclick="window.open('${e.link}', '_blank')" class="...">View Details</button>
+              <div class="flex items-center gap-3">
+                <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">${e.tag || ''}</span>
+                ${statusBadge}
+              </div>
+              <h4 class="text-xl font-bold mt-4">${e.title || ''}</h4>
+              <p class="text-slate-500 text-sm mt-2 mb-4">${e.date || ''}</p>
+              <button onclick="window.open('${e.link || '#'}', '_blank')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-100">View Details</button>
           </div>
       </div>
-    `).join("");
-      
-  } catch (error) {
-    console.error("Error loading events:", error);
-   }
- }}
+    `;
+      });
+
+      eventGrid.innerHTML = (await Promise.all(htmlPromises)).join('');
+
+    } catch (error) {
+      console.error("Error loading events:", error);
+    }
+  }
+}
+
+// Helper: if the path looks like a remote URL, return it unchanged; otherwise prefix with public/
+function resolveImagePath(path) {
+  if (!path) return '';
+  const trimmed = String(path).trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  // data URLs or event-local data/ paths should be returned as-is
+  if (trimmed.startsWith('data:') || trimmed.startsWith('data/')) return trimmed;
+  // blob or filesystem URLs should also be returned as-is
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('filesystem:')) return trimmed;
+  // If path already contains 'public/', assume it's correct
+  if (trimmed.startsWith('public/')) return trimmed;
+  // Otherwise, look in public/ folder for the asset
+  return `public/${trimmed}`;
+}
 
 window.onload = initSite;

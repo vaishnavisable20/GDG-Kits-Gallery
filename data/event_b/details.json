@@ -1,0 +1,9 @@
+{
+  "title": "Career Guidance Session",
+  "date": "Sep 05, 2025",
+  "img": "img/t.svg",
+  "active": false,
+  "tag": "Session",
+  "link": "https://gdg.community.dev/",
+  "description": "Talks and mock interviews to help students prepare for tech careers."
+}

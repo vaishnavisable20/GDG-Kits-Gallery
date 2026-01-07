@@ -1,8 +1,14 @@
 body { 
-    font-family: 'Plus Jakarta Sans', sans-serif; 
+    /* Prefer Google Sans if installed; otherwise fall back to Roboto/Poppins/system fonts */
+    font-family: 'Google Sans', 'Roboto', 'Poppins', system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     background-color: #fcfcfc; 
     color: #1e293b; 
     scroll-behavior: smooth; 
+}
+
+/* Headings: prefer Poppins for a slightly more geometric, friendly display */
+h1,h2,h3,h4,h5,h6 {
+    font-family: 'Google Sans', 'Poppins', 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 }
 
 .bg-mesh {
@@ -30,7 +36,6 @@ body {
 }
 
 .img-overlay {
-
     background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
 }
 
@@ -39,19 +44,37 @@ body {
     display: none;
 }
 
-#photo-grid {
-    scroll-snap-type: x mandatory;
-    cursor: grab;
+/* Small screens: center the content of impact cards for better layout on phones */
+@media (max-width: 767px) {
+    #impact .bento-card {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Make the large stat number stand out and centered */
+    #impact .bento-card h3 {
+        margin: 0 0 0.25rem 0;
+    }
 }
 
-#photo-grid:active {
-    cursor: grabbing;
+#photo-grid {
+    scroll-snap-type: x mandatory;
 }
 
 /* Ensure each image card keeps its width in the flex row */
 .gallery-item {
-    flex: 0 0 350px; /* Width of each image */
+    flex: 0 0 340px; /* Width of each image */
     scroll-snap-align: start;
+}
+
+/* Ensure images inside gallery items are block-level to avoid subpixel rounding/whitespace issues */
+.gallery-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* Ensure event cards keep their width in the slider */
@@ -60,7 +83,20 @@ body {
     scroll-snap-align: start;
 }
 
+.event-card img{
+    
+}
+
 /* Re-using the no-scrollbar from before */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
+}
+
+/* Ensure material symbol icons inside buttons are centered and don't add extra height */
+.material-symbols-outlined {
+    display: inline-block;
+    line-height: 1;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    vertical-align: middle;
 }
