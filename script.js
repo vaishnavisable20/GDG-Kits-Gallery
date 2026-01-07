@@ -44,7 +44,7 @@ async function initSite() {
         (p) => `
             <div class="gallery-item relative group h-80 overflow-hidden rounded-[2.5rem] bento-card border-none shadow-md">
 
-<img src="${resolveImagePath(p.url)}" class="w-full h-full object-cover object-center transform origin-center group-hover:scale-110 transition duration-500">
+<img src="${resolveImagePath(p.url)}" class="w-full h-full object-contain object-center transform origin-center group-hover:scale-110 transition duration-500">
                 <div class="absolute inset-0 img-overlay flex items-end p-8 opacity-0 group-hover:opacity-100 transition duration-300">
                     <p class="text-white font-bold text-lg">${p.caption}</p>
                 </div>
@@ -197,4 +197,7 @@ function resolveImagePath(path) {
   return `public/${trimmed}`;
 }
 
+function joinCommunity() {
+ window.open("https://gdg.community.dev/", "_blank");
+}
 window.onload = initSite;
